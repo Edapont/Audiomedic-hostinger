@@ -164,15 +164,15 @@ async def upload_audio(file: UploadFile = File(...), title: str = Form(None), cu
             temp_file_path = temp_file.name
         
         try:
-            # Transcribe with Whisper
+            # Transcribe with Whisper using litellm
             with open(temp_file_path, 'rb') as audio_file:
-                transcript = await openai_client.audio.transcriptions.create(
+                response = transcription(
                     model="whisper-1",
                     file=audio_file,
-                    language="pt"
+                    api_key=os.environ['EMERGENT_LLM_KEY']
                 )
             
-            transcript_text = transcript.text
+            transcript_text = response.text
         finally:
             # Delete temporary file
             os.unlink(temp_file_path)
