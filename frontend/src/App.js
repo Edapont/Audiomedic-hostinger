@@ -86,6 +86,10 @@ function App() {
             path="/transcription/:id" 
             element={user ? <TranscriptionDetail user={user} /> : <Navigate to="/auth" />} 
           />
+          <Route 
+            path="/admin" 
+            element={user && user.is_admin ? <AdminPanel user={user} /> : <Navigate to="/dashboard" />} 
+          />
         </Routes>
       </BrowserRouter>
     </div>
