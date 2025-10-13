@@ -29,9 +29,6 @@ JWT_SECRET = os.environ['JWT_SECRET']
 JWT_ALGORITHM = os.environ['JWT_ALGORITHM']
 JWT_EXPIRATION_HOURS = int(os.environ['JWT_EXPIRATION_HOURS'])
 
-# OpenAI Client for Whisper
-openai_client = AsyncOpenAI(api_key=os.environ['EMERGENT_LLM_KEY'])
-
 # Create the main app
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
