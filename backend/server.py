@@ -164,17 +164,19 @@ async def upload_audio(file: UploadFile = File(...), title: str = Form(None), cu
             temp_file_path = temp_file.name
         
         try:
-            # Try to transcribe with Whisper using litellm
-            # Note: EMERGENT_LLM_KEY works for text LLMs but not for Whisper API
-            # For production, user should provide their own OpenAI API key
+            # Transcribe with Whisper using OpenAI API key
+            # Use OPENAI_API_KEY if available, otherwise fallback to demo mode
+            api_key = os.environ.get('OPENAI_API_KEY') or os.environ.get('EMERGENT_LLM_KEY')
+            
             try:
                 with open(temp_file_path, 'rb') as audio_file:
                     response = transcription(
                         model="whisper-1",
                         file=audio_file,
-                        api_key=os.environ['EMERGENT_LLM_KEY']
+                        api_key=api_key
                     )
                 transcript_text = response.text
+                logging.info("✅ Whisper transcription successful")
             except Exception as whisper_error:
                 # Fallback: Generate demo transcription for MVP demonstration
                 logging.warning(f"Whisper API error (using demo mode): {str(whisper_error)}")
