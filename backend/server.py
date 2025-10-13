@@ -49,7 +49,13 @@ class UserResponse(BaseModel):
     id: str
     email: str
     name: str
+    subscription_status: str
+    subscription_end_date: Optional[str] = None
+    is_admin: bool
     created_at: str
+
+class SubscriptionUpdate(BaseModel):
+    months: int = 1  # Number of months to add/renew
 
 class TranscriptionCreate(BaseModel):
     title: Optional[str] = None
@@ -102,6 +108,43 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+def check_subscription_status(user: dict) -> str:
+    """Check and return current subscription status"""
+    if user.get('is_admin', False):
+        return 'active'  # Admins always have access
+    
+    subscription_end = user.get('subscription_end_date')
+    if not subscription_end:
+        return 'expired'
+    
+    end_date = datetime.fromisoformat(subscription_end)
+    now = datetime.now(timezone.utc)
+    
+    if end_date > now:
+        return 'active'
+    
+    days_expired = (now - end_date).days
+    if days_expired <= 7:
+        return 'grace_period'
+    
+    return 'expired'
+
+async def require_active_subscription(user: dict = Depends(get_current_user)):
+    """Require active or grace period subscription for write operations"""
+    status = check_subscription_status(user)
+    if status not in ['active', 'grace_period']:
+        raise HTTPException(
+            status_code=403,
+            detail="Assinatura expirada. Você está em modo leitura. Entre em contato com o administrador para renovar."
+        )
+    return user
+
+async def require_admin(user: dict = Depends(get_current_user)):
+    """Require admin privileges"""
+    if not user.get('is_admin', False):
+        raise HTTPException(status_code=403, detail="Acesso negado. Apenas administradores.")
+    return user
+
 # Auth Endpoints
 @api_router.get("/")
 async def root():
@@ -116,11 +159,17 @@ async def register(user: UserRegister):
     user_id = str(uuid.uuid4())
     hashed_pw = hash_password(user.password)
     
+    # New users get 14 days trial
+    trial_end = datetime.now(timezone.utc) + timedelta(days=14)
+    
     user_doc = {
         "id": user_id,
         "email": user.email,
         "name": user.name,
         "hashed_password": hashed_pw,
+        "subscription_status": "active",
+        "subscription_end_date": trial_end.isoformat(),
+        "is_admin": False,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
@@ -130,6 +179,9 @@ async def register(user: UserRegister):
         id=user_id,
         email=user.email,
         name=user.name,
+        subscription_status="active",
+        subscription_end_date=trial_end.isoformat(),
+        is_admin=False,
         created_at=user_doc["created_at"]
     )
 
@@ -141,18 +193,103 @@ async def login(credentials: UserLogin):
     
     token = create_jwt_token(user["id"], user["email"])
     
+    # Update subscription status
+    current_status = check_subscription_status(user)
+    
     return {
         "token": token,
         "user": {
             "id": user["id"],
             "email": user["email"],
-            "name": user["name"]
+            "name": user["name"],
+            "subscription_status": current_status,
+            "subscription_end_date": user.get("subscription_end_date"),
+            "is_admin": user.get("is_admin", False)
         }
+    }
+
+@api_router.get("/auth/me")
+async def get_me(current_user: dict = Depends(get_current_user)):
+    """Get current user info with updated subscription status"""
+    status = check_subscription_status(current_user)
+    
+    return {
+        "id": current_user["id"],
+        "email": current_user["email"],
+        "name": current_user["name"],
+        "subscription_status": status,
+        "subscription_end_date": current_user.get("subscription_end_date"),
+        "is_admin": current_user.get("is_admin", False)
+    }
+
+# Admin Endpoints
+@api_router.get("/admin/users")
+async def list_users(admin: dict = Depends(require_admin)):
+    """List all users (admin only)"""
+    users = await db.users.find({}, {"_id": 0, "hashed_password": 0}).to_list(1000)
+    
+    # Update status for each user
+    for user in users:
+        user['subscription_status'] = check_subscription_status(user)
+    
+    return users
+
+@api_router.put("/admin/users/{user_id}/subscription")
+async def update_subscription(user_id: str, subscription: SubscriptionUpdate, admin: dict = Depends(require_admin)):
+    """Activate or renew user subscription (admin only)"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Calculate new end date
+    current_end = user.get('subscription_end_date')
+    if current_end:
+        current_end_dt = datetime.fromisoformat(current_end)
+        # If already expired or in grace, start from now
+        if current_end_dt < datetime.now(timezone.utc):
+            new_end = datetime.now(timezone.utc) + timedelta(days=30 * subscription.months)
+        else:
+            # Extend current subscription
+            new_end = current_end_dt + timedelta(days=30 * subscription.months)
+    else:
+        new_end = datetime.now(timezone.utc) + timedelta(days=30 * subscription.months)
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "subscription_end_date": new_end.isoformat(),
+            "subscription_status": "active"
+        }}
+    )
+    
+    return {
+        "success": True,
+        "message": f"Assinatura renovada por {subscription.months} mês(es)",
+        "new_end_date": new_end.isoformat()
+    }
+
+@api_router.put("/admin/users/{user_id}/admin-status")
+async def toggle_admin_status(user_id: str, admin: dict = Depends(require_admin)):
+    """Toggle admin status for a user"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    new_admin_status = not user.get('is_admin', False)
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"is_admin": new_admin_status}}
+    )
+    
+    return {
+        "success": True,
+        "is_admin": new_admin_status
     }
 
 # Transcription Endpoints
 @api_router.post("/transcriptions/upload", response_model=TranscriptionResponse)
-async def upload_audio(file: UploadFile = File(...), title: str = Form(None), current_user: dict = Depends(get_current_user)):
+async def upload_audio(file: UploadFile = File(...), title: str = Form(None), current_user: dict = Depends(require_active_subscription)):
     try:
         # Create transcription record
         transcription_id = str(uuid.uuid4())
@@ -165,7 +302,6 @@ async def upload_audio(file: UploadFile = File(...), title: str = Form(None), cu
         
         try:
             # Transcribe with Whisper using OpenAI API key
-            # Use OPENAI_API_KEY if available, otherwise fallback to demo mode
             api_key = os.environ.get('OPENAI_API_KEY') or os.environ.get('EMERGENT_LLM_KEY')
             
             try:
@@ -178,7 +314,7 @@ async def upload_audio(file: UploadFile = File(...), title: str = Form(None), cu
                 transcript_text = response.text
                 logging.info("✅ Whisper transcription successful")
             except Exception as whisper_error:
-                # Fallback: Generate demo transcription for MVP demonstration
+                # Fallback: Generate demo transcription
                 logging.warning(f"Whisper API error (using demo mode): {str(whisper_error)}")
                 transcript_text = f"""Paciente do sexo feminino, 45 anos, comparece à consulta com queixa de dor de cabeça há 3 dias.
                 
@@ -194,9 +330,8 @@ FC: 78 bpm
 Temperatura: 36.5°C
 Paciente consciente, orientada, sem sinais neurológicos focais.
 
-Nota: Esta é uma transcrição de demonstração. Para transcrição real com Whisper, forneça uma chave OpenAI API válida no arquivo .env (OPENAI_API_KEY)."""
+Nota: Esta é uma transcrição de demonstração."""
         finally:
-            # Delete temporary file
             os.unlink(temp_file_path)
         
         # Create transcription document
@@ -220,7 +355,7 @@ Nota: Esta é uma transcrição de demonstração. Para transcrição real com W
         raise HTTPException(status_code=500, detail=f"Error processing audio: {str(e)}")
 
 @api_router.post("/transcriptions/structure")
-async def structure_notes(request: StructureRequest, current_user: dict = Depends(get_current_user)):
+async def structure_notes(request: StructureRequest, current_user: dict = Depends(require_active_subscription)):
     transcription = await db.transcriptions.find_one(
         {"id": request.transcription_id, "user_id": current_user["id"]},
         {"_id": 0}
@@ -280,6 +415,7 @@ Analise a transcrição fornecida e organize as informações nas seguintes seç
 
 @api_router.get("/transcriptions", response_model=List[TranscriptionResponse])
 async def get_transcriptions(current_user: dict = Depends(get_current_user)):
+    """Get transcriptions - available in read-only mode"""
     transcriptions = await db.transcriptions.find(
         {"user_id": current_user["id"]},
         {"_id": 0}
@@ -289,6 +425,7 @@ async def get_transcriptions(current_user: dict = Depends(get_current_user)):
 
 @api_router.get("/transcriptions/{transcription_id}", response_model=TranscriptionResponse)
 async def get_transcription(transcription_id: str, current_user: dict = Depends(get_current_user)):
+    """Get single transcription - available in read-only mode"""
     transcription = await db.transcriptions.find_one(
         {"id": transcription_id, "user_id": current_user["id"]},
         {"_id": 0}
@@ -300,7 +437,8 @@ async def get_transcription(transcription_id: str, current_user: dict = Depends(
     return transcription
 
 @api_router.delete("/transcriptions/{transcription_id}")
-async def delete_transcription(transcription_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_transcription(transcription_id: str, current_user: dict = Depends(require_active_subscription)):
+    """Delete transcription - requires active subscription"""
     result = await db.transcriptions.delete_one(
         {"id": transcription_id, "user_id": current_user["id"]}
     )
