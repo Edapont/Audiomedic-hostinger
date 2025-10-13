@@ -7,6 +7,7 @@ import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Recorder from './pages/Recorder';
 import TranscriptionDetail from './pages/TranscriptionDetail';
+import AdminPanel from './pages/AdminPanel';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
