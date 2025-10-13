@@ -106,6 +106,10 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=401, detail="Invalid token")
 
 # Auth Endpoints
+@api_router.get("/")
+async def root():
+    return {"message": "AudioMedic API", "status": "running"}
+
 @api_router.post("/auth/register", response_model=UserResponse)
 async def register(user: UserRegister):
     existing_user = await db.users.find_one({"email": user.email})
