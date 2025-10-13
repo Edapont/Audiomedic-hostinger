@@ -12,8 +12,8 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import bcrypt
 import jwt
-from openai import AsyncOpenAI
 from emergentintegrations.llm.chat import LlmChat, UserMessage
+from litellm import transcription
 import tempfile
 
 ROOT_DIR = Path(__file__).parent
