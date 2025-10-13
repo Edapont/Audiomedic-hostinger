@@ -314,6 +314,17 @@ function Dashboard({ user, onLogout }) {
           color: #0f172a;
         }
 
+        .subscription-banner {
+          padding: 1.25rem 1.5rem;
+          border-radius: 12px;
+          margin-bottom: 2rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          font-weight: 600;
+          font-size: 0.95rem;
+        }
+
         .dashboard-container {
           max-width: 1400px;
           margin: 0 auto;
