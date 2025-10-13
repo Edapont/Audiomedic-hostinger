@@ -3,16 +3,79 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { API } from '../App';
 import axios from 'axios';
-import { Mic, FileText, LogOut, Plus, Clock, Trash2, Eye } from 'lucide-react';
+import { Mic, FileText, LogOut, Plus, Clock, Trash2, Eye, Shield, AlertCircle, CheckCircle } from 'lucide-react';
 
 function Dashboard({ user, onLogout }) {
   const navigate = useNavigate();
   const [transcriptions, setTranscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userInfo, setUserInfo] = useState(user);
 
   useEffect(() => {
     loadTranscriptions();
+    loadUserInfo();
   }, []);
+
+  const loadUserInfo = async () => {
+    try {
+      const response = await axios.get(`${API}/auth/me`);
+      setUserInfo(response.data);
+    } catch (error) {
+      console.error('Error loading user info:', error);
+    }
+  };
+
+  const getDaysUntilExpiry = () => {
+    if (!userInfo?.subscription_end_date) return 0;
+    const end = new Date(userInfo.subscription_end_date);
+    const now = new Date();
+    return Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+  };
+
+  const getSubscriptionBanner = () => {
+    const status = userInfo?.subscription_status;
+    const days = getDaysUntilExpiry();
+
+    if (status === 'expired') {
+      return {
+        show: true,
+        type: 'danger',
+        icon: <AlertCircle size={20} />,
+        message: 'Assinatura expirada. Você está em modo leitura. Entre em contato com o administrador.',
+        bgColor: 'rgba(239, 68, 68, 0.1)',
+        borderColor: '#ef4444',
+        textColor: '#dc2626'
+      };
+    }
+
+    if (status === 'grace_period') {
+      return {
+        show: true,
+        type: 'warning',
+        icon: <Clock size={20} />,
+        message: `Período de graça: ${Math.abs(days)} dias restantes antes do modo leitura.`,
+        bgColor: 'rgba(245, 158, 11, 0.1)',
+        borderColor: '#f59e0b',
+        textColor: '#d97706'
+      };
+    }
+
+    if (status === 'active' && days <= 7 && days > 0) {
+      return {
+        show: true,
+        type: 'info',
+        icon: <AlertCircle size={20} />,
+        message: `Sua assinatura vence em ${days} dia${days > 1 ? 's' : ''}.`,
+        bgColor: 'rgba(14, 165, 233, 0.1)',
+        borderColor: '#0ea5e9',
+        textColor: '#0284c7'
+      };
+    }
+
+    return { show: false };
+  };
+
+  const canCreateNew = userInfo?.subscription_status === 'active' || userInfo?.subscription_status === 'grace_period';
 
   const loadTranscriptions = async () => {
     try {
