@@ -131,6 +131,16 @@ function Dashboard({ user, onLogout }) {
           <h2 className="nav-logo" data-testid="dashboard-title">AudioMedic</h2>
           <div className="nav-actions">
             <span className="user-name" data-testid="user-name">Dr. {user.name}</span>
+            {userInfo?.is_admin && (
+              <button 
+                className="btn btn-secondary"
+                onClick={() => navigate('/admin')}
+                data-testid="admin-panel-btn"
+              >
+                <Shield size={18} />
+                Admin
+              </button>
+            )}
             <button 
               className="btn btn-secondary"
               onClick={onLogout}
@@ -144,6 +154,27 @@ function Dashboard({ user, onLogout }) {
       </nav>
 
       <div className="dashboard-container">
+        {/* Subscription Banner */}
+        {(() => {
+          const banner = getSubscriptionBanner();
+          if (!banner.show) return null;
+          
+          return (
+            <div 
+              className="subscription-banner fade-in"
+              style={{
+                backgroundColor: banner.bgColor,
+                borderLeft: `4px solid ${banner.borderColor}`,
+                color: banner.textColor
+              }}
+              data-testid="subscription-banner"
+            >
+              {banner.icon}
+              <span>{banner.message}</span>
+            </div>
+          );
+        })()}
+
         <div className="dashboard-header fade-in">
           <div>
             <h1>Minhas Transcrições</h1>
@@ -151,7 +182,14 @@ function Dashboard({ user, onLogout }) {
           </div>
           <button 
             className="btn btn-primary"
-            onClick={() => navigate('/recorder')}
+            onClick={() => {
+              if (!canCreateNew) {
+                toast.error('Assinatura expirada. Renove para criar novas transcrições.');
+                return;
+              }
+              navigate('/recorder');
+            }}
+            disabled={!canCreateNew}
             data-testid="new-recording-btn"
           >
             <Plus size={20} />
