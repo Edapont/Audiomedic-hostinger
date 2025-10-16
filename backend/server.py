@@ -672,41 +672,6 @@ async def delete_transcription(
     
     return {"success": True, "message": "Transcription deleted"}
 
-# Include router
-app.include_router(api_router)
-
-# CORS configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["*"],
-    max_age=3600
-)
-
-# Logging configuration
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info("🚀 AudioMedic API starting with enhanced security")
-    logger.info("✅ Rate limiting enabled")
-    logger.info("✅ Security headers configured")
-    logger.info("✅ Password strength validation active")
-    logger.info("✅ Brute force protection enabled")
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
-    logger.info("🔒 AudioMedic API shutdown")
-
-# ============================================================================
-# PHASE 2: Email Verification + Password Reset + MFA
 # ============================================================================
 
 # Email Verification
@@ -886,3 +851,38 @@ async def get_mfa_status_endpoint(request: Request, current_user: dict = Depends
         "backup_codes_count": len(current_user.get('mfa_backup_codes', []))
     }
 
+# Include router
+app.include_router(api_router)
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
+    max_age=3600
+)
+
+# Logging configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info("🚀 AudioMedic API starting with enhanced security")
+    logger.info("✅ Rate limiting enabled")
+    logger.info("✅ Security headers configured")
+    logger.info("✅ Password strength validation active")
+    logger.info("✅ Brute force protection enabled")
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()
+    logger.info("🔒 AudioMedic API shutdown")
+
+# ============================================================================
+# PHASE 2: Email Verification + Password Reset + MFA
