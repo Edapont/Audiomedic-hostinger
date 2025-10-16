@@ -186,6 +186,39 @@ class VerifyMFA(BaseModel):
     code: str
 
 # Helper Functions
+def generate_token(length: int = 32) -> str:
+    """Generate a secure random token"""
+    return secrets.token_urlsafe(length)
+
+def generate_backup_codes(count: int = 10) -> List[str]:
+    """Generate backup codes for MFA"""
+    return [secrets.token_hex(4).upper() for _ in range(count)]
+
+def generate_qr_code(secret: str, email: str) -> str:
+    """Generate QR code for TOTP setup"""
+    totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(
+        name=email,
+        issuer_name="AudioMedic"
+    )
+    
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(totp_uri)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+    
+    return f"data:image/png;base64,{qr_base64}"
+
+def verify_totp_code(secret: str, code: str) -> bool:
+    """Verify TOTP code"""
+    totp = pyotp.TOTP(secret)
+    return totp.verify(code, valid_window=1)
+
 def create_jwt_token(user_id: str, email: str) -> str:
     expiration = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
     payload = {
