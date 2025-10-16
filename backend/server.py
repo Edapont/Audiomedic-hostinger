@@ -704,3 +704,185 @@ async def startup_event():
 async def shutdown_db_client():
     client.close()
     logger.info("🔒 AudioMedic API shutdown")
+
+# ============================================================================
+# PHASE 2: Email Verification + Password Reset + MFA
+# ============================================================================
+
+# Email Verification
+@api_router.post("/auth/resend-verification")
+@limiter.limit("3/hour")
+async def resend_verification_email_endpoint(request: Request, current_user: dict = Depends(get_current_user)):
+    if current_user.get('email_verified', False):
+        raise HTTPException(status_code=400, detail="Email já verificado")
+    
+    token = generate_token()
+    token_expiry = datetime.now(timezone.utc) + timedelta(hours=24)
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {
+            "verification_token": token,
+            "verification_token_expiry": token_expiry.isoformat()
+        }}
+    )
+    
+    await send_verification_email(current_user["email"], token, current_user["name"])
+    logging.info(f"Verification email resent to {current_user['email']}")
+    
+    return {"success": True, "message": "Email de verificação enviado"}
+
+@api_router.post("/auth/verify-email")
+@limiter.limit("10/minute")
+async def verify_email_endpoint(verify: VerifyEmail, request: Request):
+    user = await db.users.find_one({"verification_token": verify.token})
+    
+    if not user:
+        raise HTTPException(status_code=400, detail="Token inválido")
+    
+    token_expiry = user.get('verification_token_expiry')
+    if token_expiry:
+        expiry_dt = datetime.fromisoformat(token_expiry)
+        if datetime.now(timezone.utc) > expiry_dt:
+            raise HTTPException(status_code=400, detail="Token expirado. Solicite um novo.")
+    
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "email_verified": True,
+            "verification_token": None,
+            "verification_token_expiry": None
+        }}
+    )
+    
+    logging.info(f"Email verified for {user['email']}")
+    return {"success": True, "message": "Email verificado com sucesso"}
+
+# Password Reset
+@api_router.post("/auth/request-password-reset")
+@limiter.limit("3/hour")
+async def request_password_reset_endpoint(reset_request: RequestPasswordReset, request: Request):
+    user = await db.users.find_one({"email": reset_request.email})
+    
+    if not user:
+        return {"success": True, "message": "Se o email existir, um link foi enviado"}
+    
+    token = generate_token()
+    token_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
+    
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "reset_token": token,
+            "reset_token_expiry": token_expiry.isoformat()
+        }}
+    )
+    
+    await send_password_reset_email(user["email"], token, user["name"])
+    logging.info(f"Password reset requested for {user['email']}")
+    
+    return {"success": True, "message": "Se o email existir, um link foi enviado"}
+
+@api_router.post("/auth/reset-password")
+@limiter.limit("5/hour")
+async def reset_password_endpoint(reset: ResetPassword, request: Request):
+    user = await db.users.find_one({"reset_token": reset.token})
+    
+    if not user:
+        raise HTTPException(status_code=400, detail="Token inválido ou expirado")
+    
+    token_expiry = user.get('reset_token_expiry')
+    if token_expiry:
+        expiry_dt = datetime.fromisoformat(token_expiry)
+        if datetime.now(timezone.utc) > expiry_dt:
+            raise HTTPException(status_code=400, detail="Token expirado")
+    
+    hashed_password = hash_password(reset.new_password)
+    
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "hashed_password": hashed_password,
+            "reset_token": None,
+            "reset_token_expiry": None
+        }}
+    )
+    
+    logging.info(f"Password reset for {user['email']}")
+    return {"success": True, "message": "Senha redefinida com sucesso"}
+
+# Change Password
+@api_router.post("/auth/change-password")
+@limiter.limit("5/hour")
+async def change_password_endpoint(change: ChangePassword, request: Request, current_user: dict = Depends(get_current_user)):
+    if not verify_password(change.current_password, current_user["hashed_password"]):
+        raise HTTPException(status_code=401, detail="Senha atual incorreta")
+    
+    hashed_password = hash_password(change.new_password)
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {"hashed_password": hashed_password}}
+    )
+    
+    logging.info(f"Password changed for {current_user['email']}")
+    return {"success": True, "message": "Senha alterada com sucesso"}
+
+# MFA Setup
+@api_router.post("/auth/setup-mfa", response_model=SetupMFAResponse)
+@limiter.limit("5/hour")
+async def setup_mfa_endpoint(request: Request, current_user: dict = Depends(require_admin)):
+    secret = pyotp.random_base32()
+    qr_code = generate_qr_code(secret, current_user["email"])
+    backup_codes = generate_backup_codes(10)
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {
+            "mfa_secret_pending": secret,
+            "mfa_backup_codes": backup_codes
+        }}
+    )
+    
+    logging.info(f"MFA setup for admin {current_user['email']}")
+    
+    return SetupMFAResponse(
+        secret=secret,
+        qr_code=qr_code,
+        backup_codes=backup_codes
+    )
+
+@api_router.post("/auth/confirm-mfa")
+@limiter.limit("10/minute")
+async def confirm_mfa_endpoint(verify: VerifyMFA, request: Request, current_user: dict = Depends(require_admin)):
+    secret = current_user.get('mfa_secret_pending')
+    
+    if not secret:
+        raise HTTPException(status_code=400, detail="Execute /auth/setup-mfa primeiro")
+    
+    if not verify_totp_code(secret, verify.code):
+        raise HTTPException(status_code=400, detail="Código inválido")
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {
+            "mfa_enabled": True,
+            "mfa_secret": secret,
+            "mfa_secret_pending": None
+        }}
+    )
+    
+    await send_mfa_setup_email(current_user["email"], current_user["name"])
+    logging.info(f"MFA activated for admin {current_user['email']}")
+    
+    return {"success": True, "message": "MFA ativado"}
+
+@api_router.get("/auth/mfa-status")
+@limiter.limit("30/minute")
+async def get_mfa_status_endpoint(request: Request, current_user: dict = Depends(get_current_user)):
+    return {
+        "mfa_enabled": current_user.get('mfa_enabled', False),
+        "mfa_required": current_user.get('is_admin', False),
+        "backup_codes_count": len(current_user.get('mfa_backup_codes', []))
+    }
+
