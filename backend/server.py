@@ -17,6 +17,11 @@ import jwt
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 from litellm import transcription
 import tempfile
+import secrets
+import pyotp
+import qrcode
+import io
+import base64
 
 # Import security utilities
 from security_utils import (
