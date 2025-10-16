@@ -31,6 +31,7 @@ from security_utils import (
     get_remaining_attempts, AccountLockedError
 )
 from security_middleware import SecurityHeadersMiddleware
+from email_utils import send_verification_email, send_password_reset_email, send_mfa_setup_email
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
