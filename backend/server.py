@@ -141,6 +141,50 @@ class TranscriptionResponse(BaseModel):
 class StructureRequest(BaseModel):
     transcription_id: str
 
+# Phase 2 Models
+class RequestPasswordReset(BaseModel):
+    email: EmailStr
+    
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v):
+        return sanitize_email(v)
+
+class ResetPassword(BaseModel):
+    token: str
+    new_password: str
+    
+    @field_validator('new_password')
+    @classmethod
+    def validate_password(cls, v):
+        is_valid, error_msg = is_password_strong(v)
+        if not is_valid:
+            raise ValueError(error_msg)
+        return v
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+    
+    @field_validator('new_password')
+    @classmethod
+    def validate_password(cls, v):
+        is_valid, error_msg = is_password_strong(v)
+        if not is_valid:
+            raise ValueError(error_msg)
+        return v
+
+class VerifyEmail(BaseModel):
+    token: str
+
+class SetupMFAResponse(BaseModel):
+    secret: str
+    qr_code: str
+    backup_codes: List[str]
+
+class VerifyMFA(BaseModel):
+    code: str
+
 # Helper Functions
 def create_jwt_token(user_id: str, email: str) -> str:
     expiration = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
