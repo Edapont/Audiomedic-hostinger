@@ -379,8 +379,8 @@ class AudioMedicAPITester:
 
     def test_admin_subscription_renewal_without_mfa(self):
         """Test admin cannot renew subscriptions without MFA (if admin > 7 days old)"""
-        if not hasattr(self, 'admin_token') or not self.user_data:
-            self.log_test("Admin Subscription Renewal Without MFA", False, "Missing admin token or user data")
+        if not hasattr(self, 'admin_token') or not hasattr(self, 'user_id'):
+            self.log_test("Admin Subscription Renewal Without MFA", False, "Missing admin token or user ID")
             return False
             
         original_token = self.token
@@ -394,7 +394,7 @@ class AudioMedicAPITester:
         success, response = self.run_test(
             "Admin Subscription Renewal (Grace Period)",
             "PUT",
-            f"admin/users/{self.user_data.get('id', 'test-id')}/subscription",
+            f"admin/users/{self.user_id}/subscription",
             200,  # Should work within grace period
             data=renewal_data
         )
@@ -404,8 +404,8 @@ class AudioMedicAPITester:
 
     def test_admin_change_admin_status_without_mfa(self):
         """Test admin cannot change admin status without MFA (if admin > 7 days old)"""
-        if not hasattr(self, 'admin_token') or not self.user_data:
-            self.log_test("Admin Change Status Without MFA", False, "Missing admin token or user data")
+        if not hasattr(self, 'admin_token') or not hasattr(self, 'user_id'):
+            self.log_test("Admin Change Status Without MFA", False, "Missing admin token or user ID")
             return False
             
         original_token = self.token
@@ -415,7 +415,7 @@ class AudioMedicAPITester:
         success, response = self.run_test(
             "Admin Change Status (Grace Period)",
             "PUT",
-            f"admin/users/{self.user_data.get('id', 'test-id')}/admin-status",
+            f"admin/users/{self.user_id}/admin-status",
             200,  # Should work within grace period
         )
         
