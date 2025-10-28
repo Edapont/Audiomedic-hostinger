@@ -480,8 +480,8 @@ async def update_subscription(
 
 @api_router.put("/admin/users/{user_id}/admin-status")
 @limiter.limit("10/minute")
-async def toggle_admin_status(user_id: str, request: Request, admin: dict = Depends(require_admin)):
-    """Toggle admin status for a user"""
+async def toggle_admin_status(user_id: str, request: Request, admin: dict = Depends(require_admin_with_mfa)):
+    """Toggle admin status for a user (MFA required)"""
     user = await db.users.find_one({"id": user_id})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
