@@ -379,7 +379,7 @@ async def login(credentials: UserLogin, request: Request):
         else:
             raise HTTPException(
                 status_code=429,
-                detail=f"Conta bloqueada por 15 minutos devido a múltiplas tentativas falhas."
+                detail="Conta bloqueada por 15 minutos devido a múltiplas tentativas falhas."
             )
     
     # Reset failed attempts on successful login
@@ -574,7 +574,7 @@ Paciente consciente, orientada, sem sinais neurológicos focais."""
     
     except Exception as e:
         logging.error(f"Error transcribing audio: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro ao processar áudio")
+        raise HTTPException(status_code=500, detail="Erro ao processar áudio")
 
 @api_router.post("/transcriptions/structure")
 @limiter.limit("20/hour")
