@@ -262,10 +262,7 @@ def check_subscription_status(user: dict) -> str:
     if end_date > now:
         return 'active'
     
-    days_expired = (now - end_date).days
-    if days_expired <= 7:
-        return 'grace_period'
-    
+    # No grace period - subscription expires immediately
     return 'expired'
 
 async def require_active_subscription(user: dict = Depends(get_current_user)):
