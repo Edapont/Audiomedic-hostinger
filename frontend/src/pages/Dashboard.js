@@ -48,18 +48,6 @@ function Dashboard({ user, onLogout }) {
       };
     }
 
-    if (status === 'grace_period') {
-      return {
-        show: true,
-        type: 'warning',
-        icon: <Clock size={20} />,
-        message: `Período de graça: ${Math.abs(days)} dias restantes antes do modo leitura.`,
-        bgColor: 'rgba(245, 158, 11, 0.1)',
-        borderColor: '#f59e0b',
-        textColor: '#d97706'
-      };
-    }
-
     if (status === 'active' && days <= 7 && days > 0) {
       return {
         show: true,
