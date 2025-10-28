@@ -289,7 +289,7 @@ async def root():
 @api_router.post("/auth/register", response_model=UserResponse)
 @limiter.limit("3/minute")  # Max 3 registrations per minute per IP
 async def register(user: UserRegister, request: Request):
-    """Register new user with strong password validation"""
+    """Register new user - subscription must be activated by admin"""
     # Check if email already exists
     existing_user = await db.users.find_one({"email": user.email})
     if existing_user:
@@ -298,16 +298,14 @@ async def register(user: UserRegister, request: Request):
     user_id = str(uuid.uuid4())
     hashed_pw = hash_password(user.password)
     
-    # New users get 14 days trial
-    trial_end = datetime.now(timezone.utc) + timedelta(days=14)
-    
+    # No trial period - subscription starts expired
     user_doc = {
         "id": user_id,
         "email": user.email,
         "name": user.name,
         "hashed_password": hashed_pw,
-        "subscription_status": "active",
-        "subscription_end_date": trial_end.isoformat(),
+        "subscription_status": "expired",
+        "subscription_end_date": None,
         "is_admin": False,
         "email_verified": False,  # For future email verification
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -322,8 +320,8 @@ async def register(user: UserRegister, request: Request):
         id=user_id,
         email=user.email,
         name=user.name,
-        subscription_status="active",
-        subscription_end_date=trial_end.isoformat(),
+        subscription_status="expired",
+        subscription_end_date=None,
         is_admin=False,
         created_at=user_doc["created_at"]
     )
