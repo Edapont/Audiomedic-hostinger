@@ -19,7 +19,7 @@ SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
 SMTP_ENABLED = bool(SMTP_HOST and SMTP_USER and SMTP_PASSWORD)
 
 # Frontend URL for links
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://audiomedic.preview.emergentagent.com')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://medtranscribe-9.preview.emergentagent.com')
 
 
 async def send_email(

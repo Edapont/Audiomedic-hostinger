@@ -40,7 +40,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data: https:",
-            "connect-src 'self' https://audiomedic.preview.emergentagent.com",
+            "connect-src 'self' https://medtranscribe-9.preview.emergentagent.com",
             "frame-ancestors 'none'",
             "base-uri 'self'",
             "form-action 'self'"

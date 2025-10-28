@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 
 class AudioMedicAPITester:
-    def __init__(self, base_url="https://audiomedic.preview.emergentagent.com"):
+    def __init__(self, base_url="https://medtranscribe-9.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.token = None

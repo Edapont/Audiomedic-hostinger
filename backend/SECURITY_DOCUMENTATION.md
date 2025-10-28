@@ -95,7 +95,7 @@ script-src 'self' 'unsafe-inline' 'unsafe-eval' https://assets.emergent.sh;
 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
 font-src 'self' https://fonts.gstatic.com;
 img-src 'self' data: https:;
-connect-src 'self' https://audiomedic.preview.emergentagent.com;
+connect-src 'self' https://medtranscribe-9.preview.emergentagent.com;
 frame-ancestors 'none';
 base-uri 'self';
 form-action 'self'
@@ -434,7 +434,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 **CORS_ORIGINS:** Configurar domínios permitidos
 ```bash
 # .env
-CORS_ORIGINS=https://audiomedic.preview.emergentagent.com,https://audiomedic.com
+CORS_ORIGINS=https://medtranscribe-9.preview.emergentagent.com,https://audiomedic.com
 ```
 
 ### Logs de Segurança
