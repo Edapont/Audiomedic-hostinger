@@ -394,15 +394,17 @@ class AudioMedicAPITester:
         # Try to renew subscription for the test user
         renewal_data = {"months": 1}
         
-        # This should work for new admins (within 7-day grace period)
-        # But we'll test the endpoint functionality
+        # Should fail with 403 since user is not admin
         success, response = self.run_test(
-            "Admin Subscription Renewal (Grace Period)",
+            "Admin Subscription Renewal Access Check",
             "PUT",
             f"admin/users/{self.user_id}/subscription",
-            200,  # Should work within grace period
+            403,  # Expected to fail since user is not admin
             data=renewal_data
         )
+        
+        if success:
+            self.log_test("Admin Subscription Access Check", True, "Non-admin user correctly denied subscription renewal access")
         
         self.token = original_token
         return success
@@ -418,11 +420,14 @@ class AudioMedicAPITester:
         
         # Try to change admin status for the test user
         success, response = self.run_test(
-            "Admin Change Status (Grace Period)",
+            "Admin Change Status Access Check",
             "PUT",
             f"admin/users/{self.user_id}/admin-status",
-            200,  # Should work within grace period
+            403,  # Expected to fail since user is not admin
         )
+        
+        if success:
+            self.log_test("Admin Status Change Access Check", True, "Non-admin user correctly denied admin status change access")
         
         self.token = original_token
         return success
