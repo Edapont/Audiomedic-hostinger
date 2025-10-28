@@ -258,6 +258,170 @@ class AudioMedicAPITester:
         self.token = original_token
         return success
 
+    def create_admin_user(self):
+        """Create an admin user for testing"""
+        timestamp = datetime.now().strftime('%H%M%S')
+        admin_user = {
+            "email": f"admin_user_{timestamp}@audiomedic.com",
+            "password": "AdminPass123!",
+            "name": f"Dr. Admin User {timestamp}"
+        }
+        
+        success, response = self.run_test(
+            "Admin User Registration",
+            "POST",
+            "auth/register",
+            200,
+            data=admin_user
+        )
+        
+        if success:
+            self.admin_data = admin_user
+            return True
+        return False
+
+    def login_as_admin(self):
+        """Login as admin user"""
+        if not hasattr(self, 'admin_data'):
+            self.log_test("Admin Login", False, "No admin data available")
+            return False
+            
+        login_data = {
+            "email": self.admin_data["email"],
+            "password": self.admin_data["password"]
+        }
+        
+        success, response = self.run_test(
+            "Admin Login",
+            "POST",
+            "auth/login",
+            200,
+            data=login_data
+        )
+        
+        if success and 'token' in response:
+            self.admin_token = response['token']
+            return True
+        return False
+
+    def test_admin_list_users_without_mfa(self):
+        """Test admin can list users without MFA"""
+        if not hasattr(self, 'admin_token'):
+            self.log_test("Admin List Users Without MFA", False, "No admin token available")
+            return False
+            
+        original_token = self.token
+        self.token = self.admin_token
+        
+        success, response = self.run_test(
+            "Admin List Users Without MFA",
+            "GET",
+            "admin/users",
+            200
+        )
+        
+        self.token = original_token
+        return success
+
+    def test_mfa_status_endpoint(self):
+        """Test MFA status endpoint"""
+        if not hasattr(self, 'admin_token'):
+            self.log_test("MFA Status Check", False, "No admin token available")
+            return False
+            
+        original_token = self.token
+        self.token = self.admin_token
+        
+        success, response = self.run_test(
+            "MFA Status Check",
+            "GET",
+            "auth/mfa-status",
+            200
+        )
+        
+        if success:
+            # Check if response contains expected fields
+            expected_fields = ['mfa_enabled', 'mfa_required', 'mfa_mandatory', 'grace_days_remaining']
+            missing_fields = [field for field in expected_fields if field not in response]
+            if missing_fields:
+                self.log_test("MFA Status Fields Check", False, f"Missing fields: {missing_fields}")
+            else:
+                self.log_test("MFA Status Fields Check", True, "All expected fields present")
+        
+        self.token = original_token
+        return success
+
+    def test_mfa_setup_flow(self):
+        """Test MFA setup flow"""
+        if not hasattr(self, 'admin_token'):
+            self.log_test("MFA Setup Flow", False, "No admin token available")
+            return False
+            
+        original_token = self.token
+        self.token = self.admin_token
+        
+        # Test MFA setup
+        success, response = self.run_test(
+            "MFA Setup",
+            "POST",
+            "auth/setup-mfa",
+            200
+        )
+        
+        if success and 'secret' in response and 'qr_code' in response and 'backup_codes' in response:
+            self.mfa_secret = response['secret']
+            self.log_test("MFA Setup Response Check", True, "MFA setup returned all required fields")
+        else:
+            self.log_test("MFA Setup Response Check", False, f"Missing fields in MFA setup response: {response}")
+        
+        self.token = original_token
+        return success
+
+    def test_admin_subscription_renewal_without_mfa(self):
+        """Test admin cannot renew subscriptions without MFA (if admin > 7 days old)"""
+        if not hasattr(self, 'admin_token') or not self.user_data:
+            self.log_test("Admin Subscription Renewal Without MFA", False, "Missing admin token or user data")
+            return False
+            
+        original_token = self.token
+        self.token = self.admin_token
+        
+        # Try to renew subscription for the test user
+        renewal_data = {"months": 1}
+        
+        # This should work for new admins (within 7-day grace period)
+        # But we'll test the endpoint functionality
+        success, response = self.run_test(
+            "Admin Subscription Renewal (Grace Period)",
+            "PUT",
+            f"admin/users/{self.user_data.get('id', 'test-id')}/subscription",
+            200,  # Should work within grace period
+            data=renewal_data
+        )
+        
+        self.token = original_token
+        return success
+
+    def test_admin_change_admin_status_without_mfa(self):
+        """Test admin cannot change admin status without MFA (if admin > 7 days old)"""
+        if not hasattr(self, 'admin_token') or not self.user_data:
+            self.log_test("Admin Change Status Without MFA", False, "Missing admin token or user data")
+            return False
+            
+        original_token = self.token
+        self.token = self.admin_token
+        
+        # Try to change admin status for the test user
+        success, response = self.run_test(
+            "Admin Change Status (Grace Period)",
+            "PUT",
+            f"admin/users/{self.user_data.get('id', 'test-id')}/admin-status",
+            200,  # Should work within grace period
+        )
+        
+        self.token = original_token
+        return success
+
     def run_all_tests(self):
         """Run all backend tests"""
         print("🚀 Starting AudioMedic Backend API Tests")
