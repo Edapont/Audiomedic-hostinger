@@ -1,0 +1,198 @@
+# ============================================================================
+# AudioMedic - .htaccess para Hospedagem Compartilhada Hostinger
+# ============================================================================
+# Colocar este arquivo na raiz do public_html/ após upload do build
+
+# Habilitar rewrite engine
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    
+    # Forçar HTTPS
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    
+    # Forçar www (opcional - descomente se quiser)
+    # RewriteCond %{HTTP_HOST} !^www\. [NC]
+    # RewriteRule ^(.*)$ https://www.%{HTTP_HOST}/$1 [R=301,L]
+    
+    # React Router - Redirecionar todas as rotas para index.html
+    # Exceções: arquivos e diretórios existentes
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-l
+    RewriteRule . /index.html [L]
+</IfModule>
+
+# ============================================================================
+# Headers de Segurança
+# ============================================================================
+<IfModule mod_headers.c>
+    # Prevenir clickjacking
+    Header set X-Frame-Options "DENY"
+    
+    # Prevenir MIME sniffing
+    Header set X-Content-Type-Options "nosniff"
+    
+    # Proteção XSS
+    Header set X-XSS-Protection "1; mode=block"
+    
+    # Referrer policy
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # Permissions policy
+    Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    
+    # HSTS (apenas se SSL estiver configurado)
+    Header set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
+    
+    # Content Security Policy (ajustar se necessário)
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://assets.emergent.sh; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.onrender.com https://audiomedic-backend.onrender.com"
+</IfModule>
+
+# ============================================================================
+# Compressão GZIP
+# ============================================================================
+<IfModule mod_deflate.c>
+    # Comprimir HTML, CSS, JavaScript, Text, XML e fonts
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/vnd.ms-fontobject
+    AddOutputFilterByType DEFLATE application/x-font-ttf
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/x-web-app-manifest+json
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE font/opentype
+    AddOutputFilterByType DEFLATE font/otf
+    AddOutputFilterByType DEFLATE font/ttf
+    AddOutputFilterByType DEFLATE image/svg+xml
+    AddOutputFilterByType DEFLATE image/x-icon
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/javascript
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/xml
+</IfModule>
+
+# ============================================================================
+# Cache de Arquivos Estáticos
+# ============================================================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # Imagens
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType image/x-icon "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    
+    # CSS e JavaScript
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType text/javascript "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType application/x-javascript "access plus 1 month"
+    
+    # Fonts
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType font/otf "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType application/font-woff "access plus 1 year"
+    
+    # JSON
+    ExpiresByType application/json "access plus 1 week"
+    ExpiresByType application/manifest+json "access plus 1 week"
+    
+    # HTML - cache curto para permitir updates
+    ExpiresByType text/html "access plus 1 hour"
+    
+    # Default
+    ExpiresDefault "access plus 1 month"
+</IfModule>
+
+# ============================================================================
+# Cache Control Headers
+# ============================================================================
+<IfModule mod_headers.c>
+    # Cache para arquivos estáticos com hash no nome
+    <FilesMatch "\.(css|js|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|otf)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    
+    # Sem cache para HTML
+    <FilesMatch "\.(html|htm)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
+</IfModule>
+
+# ============================================================================
+# Proteger Arquivos Sensíveis
+# ============================================================================
+# Bloquear acesso a arquivos de configuração e sistema
+<FilesMatch "(^\.env|^\.git|^\.htaccess|^\.htpasswd|\.log$|\.md$|composer\.json|package\.json)">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Bloquear acesso a diretórios ocultos
+RedirectMatch 404 /\..*$
+
+# ============================================================================
+# Otimizações de Performance
+# ============================================================================
+# Desabilitar ETags (melhor usar Cache-Control)
+<IfModule mod_headers.c>
+    Header unset ETag
+</IfModule>
+FileETag None
+
+# ============================================================================
+# Configurações de Charset
+# ============================================================================
+AddDefaultCharset UTF-8
+AddCharset UTF-8 .html .css .js .xml .json .rss .atom
+
+# ============================================================================
+# Prevenir Hotlinking de Imagens (opcional)
+# ============================================================================
+# Descomente para ativar
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{HTTP_REFERER} !^$
+#     RewriteCond %{HTTP_REFERER} !^https?://(www\.)?seudominio\.com [NC]
+#     RewriteRule \.(jpg|jpeg|png|gif|svg)$ - [F,L]
+# </IfModule>
+
+# ============================================================================
+# Error Pages Customizados (opcional)
+# ============================================================================
+# ErrorDocument 404 /index.html
+# ErrorDocument 500 /index.html
+
+# ============================================================================
+# Limite de Upload (se aplicável)
+# ============================================================================
+# php_value upload_max_filesize 25M
+# php_value post_max_size 25M
+
+# ============================================================================
+# INSTRUÇÕES
+# ============================================================================
+# 1. Salve este arquivo como .htaccess (com o ponto no início)
+# 2. Upload para a pasta public_html/ do Hostinger
+# 3. Verifique se está funcionando acessando seu site
+# 4. Se der erro 500, comente módulos que podem não estar ativos
+# 5. Ajuste Content-Security-Policy se necessário para seu backend
+#
+# IMPORTANTE:
+# - Substitua "audiomedic-backend.onrender.com" pela URL real do seu backend
+# - Substitua "seudominio.com" pelo seu domínio real
+# - Teste após cada modificação
+# ============================================================================
