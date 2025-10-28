@@ -101,6 +101,7 @@ class AudioMedicAPITester:
         
         if success:
             self.user_data = test_user
+            self.user_id = response.get('id')  # Store user ID for admin operations
             # Verify user starts with expired subscription
             if response.get('subscription_status') == 'expired' and response.get('subscription_end_date') is None:
                 self.log_test("User Registration - Expired Status Check", True, "User correctly starts with expired subscription")
