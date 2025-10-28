@@ -1,0 +1,107 @@
+# ============================================================================
+# AudioMedic - Configuração Render.com
+# ============================================================================
+
+services:
+  - type: web
+    name: audiomedic-backend
+    env: python
+    region: oregon  # Escolha: oregon, frankfurt, singapore
+    plan: free      # Plano gratuito (750h/mês)
+    
+    # Build
+    buildCommand: pip install -r requirements.txt
+    
+    # Start
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    
+    # Health check
+    healthCheckPath: /api/
+    
+    # Configurações
+    envVars:
+      # Python version
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      
+      # MongoDB
+      - key: MONGO_URL
+        sync: false  # Configurar manualmente no dashboard
+      
+      - key: DB_NAME
+        value: audiomedic_db
+      
+      # JWT
+      - key: JWT_SECRET
+        generateValue: true  # Gera automaticamente
+      
+      - key: JWT_ALGORITHM
+        value: HS256
+      
+      - key: JWT_EXPIRATION_HOURS
+        value: "24"
+      
+      # OpenAI / Emergent
+      - key: EMERGENT_LLM_KEY
+        sync: false  # Configurar manualmente
+      
+      - key: OPENAI_API_KEY
+        sync: false  # Configurar manualmente
+      
+      # SMTP (opcional)
+      - key: SMTP_HOST
+        value: ""
+      
+      - key: SMTP_PORT
+        value: "587"
+      
+      - key: SMTP_USER
+        value: ""
+      
+      - key: SMTP_PASSWORD
+        value: ""
+      
+      - key: SMTP_FROM_EMAIL
+        value: noreply@audiomedic.com
+      
+      - key: SMTP_FROM_NAME
+        value: AudioMedic
+      
+      - key: SMTP_USE_TLS
+        value: "true"
+      
+      # Frontend URL
+      - key: FRONTEND_URL
+        sync: false  # Configurar com seu domínio
+      
+      # CORS
+      - key: CORS_ORIGINS
+        sync: false  # Configurar com seu domínio
+
+# ============================================================================
+# INSTRUÇÕES
+# ============================================================================
+# 
+# 1. Push este arquivo para o repositório GitHub
+# 2. Conectar repositório no Render.com
+# 3. Configurar variáveis "sync: false" manualmente no dashboard:
+#    - MONGO_URL (do MongoDB Atlas)
+#    - EMERGENT_LLM_KEY (sua chave)
+#    - OPENAI_API_KEY (sua chave OpenAI)
+#    - FRONTEND_URL (ex: https://seudominio.com)
+#    - CORS_ORIGINS (ex: https://seudominio.com,https://www.seudominio.com)
+#
+# 4. Aguardar deploy automático
+# 5. Testar: https://audiomedic-backend.onrender.com/api/
+#
+# ============================================================================
+# NOTAS
+# ============================================================================
+#
+# - Plano gratuito: 750h/mês (suficiente)
+# - Backend "dorme" após 15min inatividade
+# - Primeira requisição pode demorar ~30s
+# - Use UptimeRobot para manter ativo
+# - Build automático a cada push no GitHub
+#
+# ============================================================================
