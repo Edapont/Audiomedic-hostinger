@@ -75,7 +75,7 @@ function Dashboard({ user, onLogout }) {
     return { show: false };
   };
 
-  const canCreateNew = userInfo?.subscription_status === 'active' || userInfo?.subscription_status === 'grace_period';
+  const canCreateNew = userInfo?.subscription_status === 'active';
 
   const loadTranscriptions = async () => {
     try {
