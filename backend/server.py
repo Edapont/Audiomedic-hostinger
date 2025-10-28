@@ -861,9 +861,26 @@ async def confirm_mfa_endpoint(verify: VerifyMFA, request: Request, current_user
 @api_router.get("/auth/mfa-status")
 @limiter.limit("30/minute")
 async def get_mfa_status_endpoint(request: Request, current_user: dict = Depends(get_current_user)):
+    is_admin = current_user.get('is_admin', False)
+    mfa_enabled = current_user.get('mfa_enabled', False)
+    
+    # Calculate MFA grace period for admins
+    grace_days_remaining = None
+    mfa_mandatory = False
+    
+    if is_admin and not mfa_enabled:
+        created_at = current_user.get('created_at')
+        if created_at:
+            created_date = datetime.fromisoformat(created_at)
+            days_since_creation = (datetime.now(timezone.utc) - created_date).days
+            grace_days_remaining = max(0, 7 - days_since_creation)
+            mfa_mandatory = grace_days_remaining == 0
+    
     return {
-        "mfa_enabled": current_user.get('mfa_enabled', False),
-        "mfa_required": current_user.get('is_admin', False),
+        "mfa_enabled": mfa_enabled,
+        "mfa_required": is_admin,
+        "mfa_mandatory": mfa_mandatory,
+        "grace_days_remaining": grace_days_remaining,
         "backup_codes_count": len(current_user.get('mfa_backup_codes', []))
     }
 
