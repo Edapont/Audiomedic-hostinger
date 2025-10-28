@@ -83,7 +83,7 @@ class AudioMedicAPITester:
         return self.run_test("API Health Check", "GET", "", 200)
 
     def test_user_registration(self):
-        """Test user registration"""
+        """Test user registration - should create expired user"""
         timestamp = datetime.now().strftime('%H%M%S')
         test_user = {
             "email": f"test_user_{timestamp}@audiomedic.com",
@@ -101,7 +101,13 @@ class AudioMedicAPITester:
         
         if success:
             self.user_data = test_user
-            return True
+            # Verify user starts with expired subscription
+            if response.get('subscription_status') == 'expired' and response.get('subscription_end_date') is None:
+                self.log_test("User Registration - Expired Status Check", True, "User correctly starts with expired subscription")
+                return True
+            else:
+                self.log_test("User Registration - Expired Status Check", False, f"Expected expired status with no end date, got: {response.get('subscription_status')}, {response.get('subscription_end_date')}")
+                return False
         return False
 
     def test_user_login(self):
