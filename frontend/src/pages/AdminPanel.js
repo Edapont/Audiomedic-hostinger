@@ -54,7 +54,6 @@ function AdminPanel({ user }) {
   const getStatusInfo = (status) => {
     const statusMap = {
       active: { label: 'Ativo', color: '#10b981', icon: <CheckCircle size={16} /> },
-      grace_period: { label: 'Período de Graça', color: '#f59e0b', icon: <Clock size={16} /> },
       expired: { label: 'Expirado', color: '#ef4444', icon: <XCircle size={16} /> }
     };
     return statusMap[status] || statusMap.expired;
