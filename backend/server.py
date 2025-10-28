@@ -266,12 +266,12 @@ def check_subscription_status(user: dict) -> str:
     return 'expired'
 
 async def require_active_subscription(user: dict = Depends(get_current_user)):
-    """Require active or grace period subscription for write operations"""
+    """Require active subscription for write operations"""
     status = check_subscription_status(user)
-    if status not in ['active', 'grace_period']:
+    if status != 'active':
         raise HTTPException(
             status_code=403,
-            detail="Assinatura expirada. Você está em modo leitura. Entre em contato com o administrador para renovar."
+            detail="Assinatura expirada. Entre em contato com o administrador para renovar."
         )
     return user
 
