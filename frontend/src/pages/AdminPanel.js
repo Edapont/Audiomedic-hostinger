@@ -9,7 +9,7 @@ function AdminPanel({ user }) {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, active, grace_period, expired
+  const [filter, setFilter] = useState('all'); // all, active, expired
 
   useEffect(() => {
     if (!user.is_admin) {
