@@ -444,9 +444,9 @@ async def update_subscription(
     user_id: str, 
     subscription: SubscriptionUpdate, 
     request: Request,
-    admin: dict = Depends(require_admin)
+    admin: dict = Depends(require_admin_with_mfa)
 ):
-    """Activate or renew user subscription (admin only)"""
+    """Activate or renew user subscription (admin only, MFA required)"""
     user = await db.users.find_one({"id": user_id})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
