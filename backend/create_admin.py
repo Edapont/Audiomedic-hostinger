@@ -134,7 +134,9 @@ def create_admin():
         print()
         print("⚠️  IMPORTANTE:")
         print("   - Guarde suas credenciais em local seguro")
-        print("   - Use MFA para maior segurança (configurar no painel admin)")
+        print("   - Configure MFA em até 7 dias (OBRIGATÓRIO)")
+        print("     * Após 7 dias, operações críticas serão bloqueadas sem MFA")
+        print("     * Setup MFA: Dashboard → Segurança → Configurar MFA")
         print("   - Altere a senha periodicamente")
         print()
         
