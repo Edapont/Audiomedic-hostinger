@@ -144,13 +144,6 @@ function AdminPanel({ user }) {
             Ativos ({users.filter(u => u.subscription_status === 'active').length})
           </button>
           <button 
-            className={`filter-tab ${filter === 'grace_period' ? 'active' : ''}`}
-            onClick={() => setFilter('grace_period')}
-            data-testid="filter-grace"
-          >
-            Graça ({users.filter(u => u.subscription_status === 'grace_period').length})
-          </button>
-          <button 
             className={`filter-tab ${filter === 'expired' ? 'active' : ''}`}
             onClick={() => setFilter('expired')}
             data-testid="filter-expired"
