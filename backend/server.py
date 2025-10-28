@@ -281,6 +281,27 @@ async def require_admin(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Acesso negado. Apenas administradores.")
     return user
 
+async def require_admin_with_mfa(user: dict = Depends(require_admin)):
+    """Require admin with MFA enabled"""
+    if not user.get('mfa_enabled', False):
+        # Check if admin was created recently (grace period of 7 days)
+        created_at = user.get('created_at')
+        if created_at:
+            created_date = datetime.fromisoformat(created_at)
+            days_since_creation = (datetime.now(timezone.utc) - created_date).days
+            
+            # If admin was created less than 7 days ago, allow without MFA but warn
+            if days_since_creation < 7:
+                logging.warning(f"Admin {user['email']} accessing without MFA (grace period: {7 - days_since_creation} days remaining)")
+                return user
+        
+        # After grace period, MFA is mandatory
+        raise HTTPException(
+            status_code=403, 
+            detail="MFA obrigatório para administradores. Configure MFA em /auth/setup-mfa"
+        )
+    return user
+
 # Auth Endpoints
 @api_router.get("/")
 async def root():
