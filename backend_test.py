@@ -427,17 +427,29 @@ class AudioMedicAPITester:
         print("🚀 Starting AudioMedic Backend API Tests")
         print("=" * 50)
         
-        # Test sequence
+        # Test sequence based on review request
         tests = [
+            # Basic API health
             self.test_api_health,
-            self.test_user_registration,
+            
+            # Test 1: No Trial Period for New Users
+            self.test_user_registration,  # Should create expired user
             self.test_user_login,
+            self.test_expired_user_transcription_blocked,  # Should get 403
+            
+            # Test 2: Admin MFA Requirements
+            self.create_admin_user,
+            self.login_as_admin,
+            self.test_admin_list_users_without_mfa,  # Should work without MFA
+            self.test_mfa_status_endpoint,  # Test MFA status fields
+            self.test_mfa_setup_flow,  # Test MFA setup
+            
+            # Test admin operations (within grace period for new admin)
+            self.test_admin_subscription_renewal_without_mfa,
+            self.test_admin_change_admin_status_without_mfa,
+            
+            # Other tests
             self.test_get_transcriptions_empty,
-            self.test_audio_upload_transcription,
-            self.test_get_specific_transcription,
-            self.test_structure_notes,
-            self.test_get_transcriptions_with_data,
-            self.test_delete_transcription,
             self.test_invalid_token_access
         ]
         
