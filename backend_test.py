@@ -278,6 +278,7 @@ class AudioMedicAPITester:
         
         if success:
             self.admin_data = admin_user
+            self.admin_user_id = response.get('id')
             return True
         return False
 
