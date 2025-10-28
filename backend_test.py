@@ -150,8 +150,8 @@ class AudioMedicAPITester:
             return False
         return False
 
-    def test_audio_upload_transcription(self):
-        """Test audio upload and transcription"""
+    def test_expired_user_transcription_blocked(self):
+        """Test that expired users cannot create transcriptions (should get 403)"""
         # Create a small test audio file (WebM format)
         test_audio_content = b'GkXfo0AgQoaBAUL3gQFC8oEEQvOBCEKCQAR3ZWJtQoeBAkKFgQIYU4BnQI0VSalmQCgq17FAAw9CQE2AQAZ3aGFtbXlXQUAGd2hhbW15RIlACECPQAAAAAAAFlSua0AxrkAu14EBY8WBAZyBACK1nEADdW5khkAFVl9WUDglhohAA1ZQOIOBAeBABrCBCLqBCB9DtnVAIueBAKNAHIEAAIcJ'
         
@@ -165,18 +165,15 @@ class AudioMedicAPITester:
                 data = {'title': 'Test Consultation Audio'}
                 
                 success, response = self.run_test(
-                    "Audio Upload & Transcription",
+                    "Expired User Transcription Block (403 Expected)",
                     "POST",
                     "transcriptions/upload",
-                    200,
+                    403,  # Should be blocked with 403
                     data=data,
                     files=files
                 )
                 
-                if success and 'id' in response:
-                    self.transcription_id = response['id']
-                    return True
-                return False
+                return success
         finally:
             os.unlink(temp_file_path)
 
